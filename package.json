@@ -1,0 +1,1 @@
+{"name":"invitelens","version":"1.0.0","private":true,"scripts":{"check":"node --check core.js && node --check app.js","test":"node --test test/core.test.cjs"}}

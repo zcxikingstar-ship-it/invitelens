@@ -1,0 +1,11 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const C=require('../core.js');const base='BEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:Review\nDTSTART:20261001T090000Z\nDTEND:20261001T100000Z\nORGANIZER:mailto:a@example.com\nEND:VEVENT\nEND:VCALENDAR';
+test('reads an event and UTC time',()=>{const r=C.inspect(base);assert.equal(r.events[0].summary,'Review');assert.equal(r.events[0].startKind,'utc');assert.equal(r.ready,true);});
+test('flags floating time',()=>assert.equal(C.inspect(base.replace('20261001T090000Z','20261001T090000')).findings[0].kind,'floating-time'));
+test('recognizes TZID time',()=>assert.equal(C.inspect(base.replace('DTSTART:','DTSTART;TZID=Asia/Shanghai:')).events[0].startKind,'timezone:Asia/Shanghai'));
+test('recognizes all day events',()=>assert.equal(C.inspect(base.replace('20261001T090000Z','20261001')).events[0].startKind,'all-day'));
+test('flags a missing end',()=>assert.equal(C.inspect(base.replace('DTEND:20261001T100000Z\n','')).findings[0].kind,'no-end'));
+test('flags recurrence alarms and external links',()=>{const r=C.inspect(base.replace('ORGANIZER:', 'RRULE:FREQ=WEEKLY\nURL:https://meet.example/x\nTRIGGER:-PT10M\nORGANIZER:'));assert.deepEqual(r.findings.map(x=>x.kind),['recurring','alarm','external-link']);});
+test('flags multiple events',()=>assert.ok(C.inspect(base.replace('END:VCALENDAR','BEGIN:VEVENT\nSUMMARY:Other\nDTSTART:20261002\nEND:VEVENT\nEND:VCALENDAR')).findings.some(x=>x.kind==='multiple-events')));
+test('unfolds folded content',()=>assert.equal(C.inspect(base.replace('SUMMARY:Review','SUMMARY:Long\n title')).events[0].summary,'Longtitle'));
+test('mismatched components fail',()=>assert.throws(()=>C.inspect('BEGIN:VEVENT\nEND:VCALENDAR')));
+test('report states the import boundary',()=>assert.match(C.report(C.inspect(base)),/Do not import/));
